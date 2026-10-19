@@ -8,7 +8,9 @@ from pathlib import Path
 from botmeet.ports.analyzer import MeetingNotes
 from botmeet.ports.transcriber import TranscriptSegment
 
-TRANSCRIPT_LINE = re.compile(r"\[\s*([\d.]+)\s*->\s*([\d.]+)\]\s*(.*)")
+TRANSCRIPT_LINE = re.compile(
+    r"\[\s*([\d.]+)\s*->\s*([\d.]+)\]\s*(?:(YOU|OTHERS|MIXED):\s*)?(.*)"
+)
 
 
 def read_transcript(path: Path) -> list[TranscriptSegment]:
@@ -16,13 +18,15 @@ def read_transcript(path: Path) -> list[TranscriptSegment]:
     for line in path.read_text(encoding="utf-8").splitlines():
         match = TRANSCRIPT_LINE.match(line)
         if match:
-            start, end, text = match.groups()
-            segments.append(TranscriptSegment(float(start), float(end), text))
+            start, end, speaker, text = match.groups()
+            segments.append(TranscriptSegment(float(start), float(end), text, speaker or ""))
     return segments
 
 
 def build_prompt(segments: list[TranscriptSegment]) -> str:
-    body = "\n".join(f"[{s.start:.0f}s] {s.text}" for s in segments)
+    body = "\n".join(
+        f"[{s.start:.0f}s{f' {s.speaker}' if s.speaker else ''}] {s.text}" for s in segments
+    )
     return f"""You are a meeting analyst. Read this transcript and respond with JSON only
 (no markdown fences, no commentary) using exactly these keys:
 "summary" (string, 3-5 sentences), "decisions" (string array),

@@ -44,3 +44,21 @@ def test_read_transcript_roundtrip(tmp_path):
         (0.0, 3.2, "hola mundo"),
         (3.2, 5.0, "chau"),
     ]
+
+
+def test_read_transcript_with_speaker_tags(tmp_path):
+    from botmeet.adapters.transcriber_faster_whisper import write_transcript
+
+    path = tmp_path / "transcript.txt"
+    write_transcript(
+        path,
+        [
+            TranscriptSegment(0.0, 1.0, "yo hablo", "YOU"),
+            TranscriptSegment(1.0, 2.0, "sin marca"),
+        ],
+    )
+    segments = read_transcript(path)
+    assert [(s.speaker, s.text) for s in segments] == [
+        ("YOU", "yo hablo"),
+        ("", "sin marca"),
+    ]

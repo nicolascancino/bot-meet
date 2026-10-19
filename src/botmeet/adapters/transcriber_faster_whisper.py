@@ -35,8 +35,7 @@ def _ensure_cuda_dlls() -> None:
         os.environ["PATH"] = os.pathsep.join(bindirs) + os.pathsep + os.environ.get("PATH", "")
 
 
-def load_mono_16k(path: Path) -> np.ndarray:
-    """Decode a PCM WAV to 16 kHz mono float32 without PyAV."""
+def _decode_16k(path: Path) -> tuple[np.ndarray, int]:
     from scipy.signal import resample_poly
 
     with wave.open(str(path), "rb") as wf:
@@ -44,11 +43,27 @@ def load_mono_16k(path: Path) -> np.ndarray:
         rate = wf.getframerate()
         raw = wf.readframes(wf.getnframes())
     audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
-    if channels > 1:
-        audio = audio.reshape(-1, channels).mean(axis=1)
+    audio = audio.reshape(-1, channels)
     if rate != TARGET_SR:
-        audio = resample_poly(audio, TARGET_SR, rate).astype(np.float32)
-    return audio
+        audio = np.stack(
+            [resample_poly(audio[:, c], TARGET_SR, rate) for c in range(channels)],
+            axis=1,
+        ).astype(np.float32)
+    return audio, channels
+
+
+def load_mono_16k(path: Path) -> np.ndarray:
+    """Decode a PCM WAV to 16 kHz mono float32 without PyAV."""
+    audio, _ = _decode_16k(path)
+    return audio.mean(axis=1).astype(np.float32)
+
+
+def load_stereo_16k(path: Path) -> np.ndarray:
+    """Decode a PCM WAV to 16 kHz stereo float32 (duplicating mono)."""
+    audio, _ = _decode_16k(path)
+    if audio.shape[1] == 1:
+        audio = np.repeat(audio, 2, axis=1)
+    return audio[:, :2]
 
 
 @dataclass
@@ -77,16 +92,23 @@ class FasterWhisperTranscriber:
         return self._model
 
     def transcribe(self, audio_path: Path) -> list[TranscriptSegment]:
+        from botmeet.diarize import attribute_speakers
+
         model = self._load()
         audio = load_mono_16k(audio_path)
         segments, _info = model.transcribe(audio, beam_size=5)
-        return [
+        plain = [
             TranscriptSegment(start=s.start, end=s.end, text=s.text.strip())
             for s in segments
         ]
+        try:
+            return attribute_speakers(plain, load_stereo_16k(audio_path))
+        except Exception:
+            return plain
 
 
 def write_transcript(path: Path, segments: list[TranscriptSegment]) -> None:
     with open(path, "w", encoding="utf-8") as fh:
         for s in segments:
-            fh.write(f"[{s.start:7.2f} -> {s.end:7.2f}] {s.text}\n")
+            tag = f"{s.speaker}: " if s.speaker else ""
+            fh.write(f"[{s.start:7.2f} -> {s.end:7.2f}] {tag}{s.text}\n")
