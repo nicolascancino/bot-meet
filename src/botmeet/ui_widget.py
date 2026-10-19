@@ -71,14 +71,32 @@ class FloatingWidget(QWidget):
 
         self._timer_label = QLabel("00:00")
         self._timer_label.setStyleSheet("color: white; font-size: 14px;")
+        # drag from the label too (combos/button keep their own events)
+        self._timer_label.mousePressEvent = lambda e: self.mousePressEvent(e)
+        self._timer_label.mouseMoveEvent = lambda e: self.mouseMoveEvent(e)
+        self._timer_label.mouseReleaseEvent = lambda e: self.mouseReleaseEvent(e)
+        self._timer_label.setCursor(Qt.CursorShape.SizeAllCursor)
+        self.setCursor(Qt.CursorShape.SizeAllCursor)
+        self._button.setCursor(Qt.CursorShape.ArrowCursor)
+
+        self._close_btn = QPushButton("×")
+        self._close_btn.setFixedSize(24, 24)
+        self._close_btn.setToolTip("Close")
+        self._close_btn.setStyleSheet(
+            "QPushButton { background: transparent; color: #888; font-size: 14px; border: none; }"
+            "QPushButton:hover { color: white; }"
+        )
+        self._close_btn.setCursor(Qt.CursorShape.ArrowCursor)
+        self._close_btn.clicked.connect(self.close)
 
         layout.addWidget(self._project)
         layout.addWidget(self._mic)
         layout.addWidget(self._button)
         layout.addWidget(self._timer_label)
+        layout.addWidget(self._close_btn)
 
         self.setStyleSheet("FloatingWidget { background: rgba(20, 20, 20, 220); border-radius: 12px; }")
-        self.setFixedSize(410, 52)
+        self.setFixedSize(450, 52)
 
         self._tick = QTimer(self)
         self._tick.setInterval(500)
