@@ -1,0 +1,8 @@
+[   0.00 ->    4.00] Bueno equipo, arranquemos con el diseño del asistente de reuniones
+[   4.00 ->    9.00] La idea es un widget flotante que grabe el audio del sistema y el micrófono
+[   9.00 ->   14.00] Propongo guardar el sistema en el canal izquierdo y el mic en el derecho
+[  14.00 ->   18.00] Me gusta, así después podemos separar las voces para transcribir
+[  18.00 ->   23.00] Para la transcripción usamos Whisper local, en la 4070 va a volar
+[  23.00 ->   27.00] De acuerdo, y el análisis con Ollama por ahora, Gemini después
+[  27.00 ->   31.00] Entonces Nico arma el motor de captura y yo el adaptador de Ollama
+[  31.00 ->   34.00] Cerramos: próxima reunión el viernes para probar el widget
